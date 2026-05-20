@@ -165,7 +165,17 @@ void setup() {
   delay(500);
 
   Ethernet.init(PIN_W5500_CS);
-  Ethernet.begin(mac, localIP);
+  
+  // Set socket timeout to prevent indefinite hang on W5500 failure
+  unsigned long eth_timeout = millis() + 10000;  // 10 second timeout
+  while (!Ethernet.localIP() && (millis() - eth_timeout) < 10000) {
+    Ethernet.begin(mac, localIP);
+    delay(500);
+    if (millis() > eth_timeout) {
+      Serial.println(F("ERROR: Ethernet init timeout — W5500 may be disconnected"));
+      break;
+    }
+  }
   delay(500);
 
   Serial.print(F("IP address : "));

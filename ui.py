@@ -39,16 +39,16 @@ C_FIRE_PRESS  = "#cc0000"
 C_FIRE_PRESS2 = "#ff4444"  # brighter when timer-countdown active
 
 # ── Fonts ─────────────────────────────────────────────────────
-F_TITLE   = ("Courier", 13, "bold")
-F_BTN     = ("Courier", 22, "bold")
-F_FIRE    = ("Courier", 28, "bold")
-F_LABEL   = ("Courier", 11, "bold")
-F_CONSOLE = ("Courier", 10)
-F_VALUE   = ("Courier", 13, "bold")
-F_STATUS  = ("Courier", 13, "bold")
-F_MOTOR   = ("Courier", 16, "bold")
-F_SECTION = ("Courier", 11, "bold")
-F_SLIDER  = ("Courier", 11)
+F_TITLE   = ("Courier", 20, "bold")
+F_BTN     = ("Courier", 33, "bold")
+F_FIRE    = ("Courier", 42, "bold")
+F_LABEL   = ("Courier", 17, "bold")
+F_CONSOLE = ("Courier", 15)
+F_VALUE   = ("Courier", 20, "bold")
+F_STATUS  = ("Courier", 20, "bold")
+F_MOTOR   = ("Courier", 24, "bold")
+F_SECTION = ("Courier", 17, "bold")
+F_SLIDER  = ("Courier", 17)
 
 
 def get_pi_temp() -> str:
@@ -102,17 +102,17 @@ class MotorControlApp:
                                 up_color="#0044cc", dn_color="#884400")
 
     def _build_statusbar(self):
-        bar = tk.Frame(self.root, bg=C_ACCENT, height=42)
+        bar = tk.Frame(self.root, bg=C_ACCENT, height=60)
         bar.pack(fill=tk.X)
         bar.pack_propagate(False)
 
         tk.Label(bar, text="▶  OPTICAL FIBER MOTOR CONTROL AND TRIGGER  v4.0",
-                 font=F_TITLE, bg=C_ACCENT, fg="#ffffff").pack(side=tk.LEFT, padx=16)
+                 font=F_TITLE, bg=C_ACCENT, fg="#ffffff").pack(side=tk.LEFT, padx=20)
 
         self._conn_var = tk.StringVar(value="● INITIALISING")
         self._conn_lbl = tk.Label(bar, textvariable=self._conn_var,
                                   font=F_STATUS, bg=C_ACCENT, fg="#ffff00")
-        self._conn_lbl.pack(side=tk.RIGHT, padx=16)
+        self._conn_lbl.pack(side=tk.RIGHT, padx=20)
 
     def _build_motor_panel(self, parent, label, motor_id, col,
                            up_label, dn_label, up_color, dn_color):
@@ -169,11 +169,15 @@ class MotorControlApp:
         frame = tk.Frame(outer, bg=C_PANEL)
         frame.pack(fill=tk.BOTH, expand=True)
         frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=2)  # FIRE button takes more space
+        frame.rowconfigure(1, weight=1)  # Slider takes some space
+        frame.rowconfigure(4, weight=0)  # Info frame is minimal
 
-        # FIRE button — big, full width
+        # FIRE button — MUCH bigger, full width, takes vertical space
         fire_outer = tk.Frame(frame, bg=C_BORDER, padx=2, pady=2)
-        fire_outer.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 4))
+        fire_outer.grid(row=0, column=0, sticky="nsew", padx=8, pady=(8, 6))
         fire_outer.columnconfigure(0, weight=1)
+        fire_outer.rowconfigure(0, weight=1)
 
         self._fire_btn = tk.Button(
             fire_outer, text="🔴  FIRE",
@@ -181,19 +185,20 @@ class MotorControlApp:
             bg=C_FIRE_IDLE, fg=C_TEXT,
             activebackground=C_FIRE_PRESS, activeforeground="#ffffff",
             relief="flat", borderwidth=0,
-            cursor="hand2", pady=18,
+            cursor="hand2", pady=24,
         )
-        self._fire_btn.grid(row=0, column=0, sticky="ew")
+        self._fire_btn.grid(row=0, column=0, sticky="nsew")
         self._fire_btn.bind("<ButtonPress-1>",   self._fire_press)
         self._fire_btn.bind("<ButtonRelease-1>", self._fire_release)
 
-        # Timer slider
+        # Timer slider — bigger, better use of space
         slider_frame = tk.Frame(frame, bg=C_PANEL)
-        slider_frame.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 6))
+        slider_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 6))
         slider_frame.columnconfigure(1, weight=1)
+        slider_frame.rowconfigure(0, weight=1)
 
         tk.Label(slider_frame, text="TIMER:", font=F_SLIDER,
-                 bg=C_PANEL, fg=C_DIM).grid(row=0, column=0, padx=(0, 6))
+                 bg=C_PANEL, fg=C_DIM).grid(row=0, column=0, padx=(0, 6), sticky="w")
 
         self._timer_var = tk.IntVar(value=0)
         self._timer_slider = tk.Scale(
@@ -202,27 +207,27 @@ class MotorControlApp:
             bg=C_PANEL, fg=C_TEXT, troughcolor="#dddddd",
             highlightthickness=0, bd=0,
             font=F_SLIDER, showvalue=False,
-            cursor="hand2",
+            cursor="hand2", length=250, width=28,
         )
-        self._timer_slider.grid(row=0, column=1, sticky="ew")
+        self._timer_slider.grid(row=0, column=1, sticky="nsew", padx=(0, 8))
 
         self._timer_lbl = tk.Label(slider_frame, text="0 s",
-                                   font=F_SLIDER, bg=C_PANEL, fg=C_DIM, width=4)
-        self._timer_lbl.grid(row=0, column=2, padx=(4, 0))
+                                   font=F_VALUE, bg=C_PANEL, fg=C_GREEN, width=5)
+        self._timer_lbl.grid(row=0, column=2, padx=(0, 4), sticky="e")
         self._timer_var.trace_add("write", self._on_timer_change)
 
         # Countdown label
         self._countdown_var = tk.StringVar(value="")
         tk.Label(frame, textvariable=self._countdown_var,
-                 font=("Courier", 12, "bold"), bg=C_PANEL, fg=C_RED).grid(
-                     row=2, column=0, pady=(0, 4))
+                 font=F_SLIDER, bg=C_PANEL, fg=C_RED).grid(
+                     row=2, column=0, pady=(2, 2))
 
         # Separator
-        tk.Frame(frame, bg=C_BORDER, height=1).grid(row=3, column=0, sticky="ew", padx=12, pady=6)
+        tk.Frame(frame, bg=C_BORDER, height=2).grid(row=3, column=0, sticky="ew", padx=10, pady=4)
 
         # ── Slim console: Connection, Latency, CPU Temp ──
         info_frame = tk.Frame(frame, bg=C_PANEL)
-        info_frame.grid(row=4, column=0, sticky="ew", padx=12)
+        info_frame.grid(row=4, column=0, sticky="ew", padx=12, pady=4)
         info_frame.columnconfigure(1, weight=1)
 
         rows = [
@@ -234,36 +239,35 @@ class MotorControlApp:
         for i, (key, lbl_text) in enumerate(rows):
             tk.Label(info_frame, text=lbl_text + ":",
                      font=F_LABEL, bg=C_PANEL, fg=C_DIM, anchor="w").grid(
-                         row=i, column=0, sticky="w", pady=2)
+                         row=i, column=0, sticky="w", pady=3)
             var = tk.StringVar(value="—")
             lbl = tk.Label(info_frame, textvariable=var,
                            font=F_VALUE, bg=C_PANEL, fg=C_TEXT, anchor="w")
             lbl.grid(row=i, column=1, sticky="w", padx=6)
             self._crows[key] = (var, lbl)
 
-        # Spacer
-        tk.Frame(frame, bg=C_PANEL).grid(row=5, column=0, sticky="nsew")
-        frame.rowconfigure(5, weight=1)
+        # Separator (no spacer — buttons come right after)
+        tk.Frame(frame, bg=C_BORDER, height=2).grid(row=5, column=0, sticky="ew", padx=10, pady=4)
 
-        # Separator
-        tk.Frame(frame, bg=C_BORDER, height=1).grid(row=6, column=0, sticky="ew", padx=10, pady=6)
-
-        # Buttons
-        tk.Button(frame, text="[ QUIT ]", font=("Courier", 10, "bold"),
+        # Buttons (compact)
+        tk.Button(frame, text="[ QUIT ]", font=("Courier", 15, "bold"),
                   bg=C_PANEL, fg=C_DIM, activebackground=C_PANEL,
-                  relief="flat", command=self._quit, cursor="hand2").grid(row=7, column=0, pady=(0, 4))
+                  relief="flat", command=self._quit, cursor="hand2").grid(row=6, column=0, pady=(2, 2))
 
-        tk.Button(frame, text="⏻  SHUTDOWN PI", font=("Courier", 11, "bold"),
+        tk.Button(frame, text="⏻  SHUTDOWN PI", font=F_SECTION,
                   bg=C_SHUTDOWN, fg="#ffffff",
                   activebackground=C_SHUTDOWN, activeforeground="#ffffff",
                   relief="flat", command=self._confirm_shutdown, cursor="hand2").grid(
-                      row=8, column=0, sticky="ew", padx=14, pady=(0, 12))
+                      row=7, column=0, sticky="ew", padx=12, pady=(0, 8))
 
     # ── Timer slider callback ─────────────────────────────────
 
     def _on_timer_change(self, *_):
         v = self._timer_var.get()
         self._timer_lbl.configure(text=f"{v} s")
+        # Timer label turns green when at 0, otherwise dim
+        color = C_GREEN if v == 0 else C_DIM
+        self._timer_lbl.configure(fg=color)
 
     # ── Motor button handlers ─────────────────────────────────
 

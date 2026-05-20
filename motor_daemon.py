@@ -85,6 +85,7 @@ class MotorDaemon:
         self._lock       = threading.Lock()
         self._running    = False
         self._gpio_ready = False
+        self._gpio_thread_handle = None  # Track GPIO thread for proper shutdown
 
         self._pending_cmd      = None
         self._fire_hold_active = False   # True = relay should be ON this cycle
@@ -214,11 +215,17 @@ class MotorDaemon:
         threading.Thread(target=self._sender_thread,   daemon=True, name="sender").start()
         threading.Thread(target=self._receiver_thread, daemon=True, name="receiver").start()
         if self._gpio_ready:
-            threading.Thread(target=self._gpio_thread, daemon=True, name="gpio").start()
+            self._gpio_thread_handle = threading.Thread(target=self._gpio_thread, daemon=True, name="gpio")
+            self._gpio_thread_handle.start()
 
     def stop(self):
         self._running = False
         self._close_socket()
+        
+        # Give GPIO thread time to exit gracefully before cleanup
+        if self._gpio_thread_handle is not None and self._gpio_thread_handle.is_alive():
+            self._gpio_thread_handle.join(timeout=0.5)
+        
         if self._gpio_ready:
             try:
                 for pin in ALL_LED_PINS:
@@ -236,6 +243,7 @@ class MotorDaemon:
 
     def _sender_thread(self):
         hb_led_off_time = 0.0
+        bind_fail_count = 0
 
         while self._running:
             loop_start = time.time()
@@ -243,8 +251,14 @@ class MotorDaemon:
             if not self._sock_ready:
                 self._gpio_set_leds(green=False, red=True)
                 if not self._try_bind_socket():
+                    bind_fail_count += 1
+                    # After 3 consecutive failures (6 seconds), restart is needed
+                    if bind_fail_count >= 3:
+                        print(f"[daemon] Socket bind failed {bind_fail_count}x — restart UI or check Ethernet")
                     time.sleep(SOCKET_RETRY)
                     continue
+                else:
+                    bind_fail_count = 0
 
             with self._lock:
                 pending        = self._pending_cmd
